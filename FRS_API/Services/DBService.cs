@@ -187,5 +187,20 @@ namespace FRS_API.Services
                 }
             }
         }
+
+        public async Task<string> GetUserVoiceId(int userId)
+        {
+            //TO-DO change query to get voice Id
+            var query = $"select AzurepersonId from [User] where Id ={userId};";
+            using (var connection = new SqlConnection(connectionString))
+            {
+                using (SqlCommand cmd = new SqlCommand(query, connection))
+                {
+                    connection.Open();
+                    var reader = await cmd.ExecuteScalarAsync().ConfigureAwait(false);
+                    return reader.ToString();
+                }
+            }
+        }
     }
 }
