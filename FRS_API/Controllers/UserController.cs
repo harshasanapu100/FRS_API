@@ -6,6 +6,7 @@ using Microsoft.CognitiveServices.Speech.Audio;
 using Microsoft.CognitiveServices.Speech.Speaker;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -51,8 +52,25 @@ namespace FRS_API.Controllers
                 return Unauthorized();
             }
         }
+
+        [HttpPost("VoiceEnroll")]
+        public async Task<IActionResult> EnrollVoice(int userId)
+        {
+            string subscriptionKey = "b23d4db8df61461883a908492c8f238b";
+            string region = "westus";
+            var config = SpeechConfig.FromSubscription(subscriptionKey, region);
+
+            // Save file to C:\\
+            var fs = new FileStream("C:\\TempWeb.wav",FileMode.OpenOrCreate);
+            await Request.Body.CopyToAsync(fs).ConfigureAwait(false);
+            fs.Close();
+
+            await VerificationEnroll("sarath", config);
+            return Ok();
+        }
+
         [HttpPost("Voice")]
-        public async Task<IActionResult> AuthenticateVoice(int userId)
+        public async Task<IActionResult> AuthenticateVoice(string userId)
         {
             // TO-DO Save Audio received to C://Temp.wav 
             string subscriptionKey = "b23d4db8df61461883a908492c8f238b";
@@ -62,15 +80,49 @@ namespace FRS_API.Controllers
             {
                 var all = await client.GetAllProfilesAsync(VoiceProfileType.TextIndependentVerification);
                 //TO-DO  Get Voice Profile basd on USerId from the above list
-                var voiceId = await dbService.GetUserVoiceId(userId).ConfigureAwait(false);
+                //  var voiceId = await dbService.GetUserVoiceId(userId).ConfigureAwait(false);
+                 
+                 var userProfile = all.Where(v => v.Id == userId).SingleOrDefault();
 
-                var userProfile = all.Where(v => v.Id == voiceId).SingleOrDefault();
-
-                var success = await SpeakerVerify(config, userProfile != null ? userProfile : all[0]);
+                var success = await SpeakerVerify(config, all[0]);
                 if (success)
                     return Ok();
             }
             return Unauthorized();
+        }
+
+        public async Task VerificationEnroll(string name, SpeechConfig config)
+        {
+            using (var client = new VoiceProfileClient(config))
+            using (var profile = await client.CreateProfileAsync(VoiceProfileType.TextIndependentVerification, "en-us"))
+            {
+
+                using (var audioInput = AudioConfig.FromWavFileInput("C:\\TempWeb.wav"))
+                {
+                    Console.WriteLine($"Enrolling profile id {profile.Id}.");
+
+                    VoiceProfileEnrollmentResult result = null;
+                    while (result is null || result.RemainingEnrollmentsSpeechLength > TimeSpan.Zero)
+                    {
+                        Console.WriteLine("Continue speaking to add to the profile enrollment sample.");
+                        result = await client.EnrollProfileAsync(profile, audioInput);
+                        Console.WriteLine($"Remaining enrollment audio time needed: {result.RemainingEnrollmentsSpeechLength}");
+                    }
+
+                    if (result.Reason == ResultReason.EnrolledVoiceProfile)
+                    {
+                        Console.WriteLine("Enrolled with Id " + result.ProfileId);
+                        // TO-DO Insert Data into Use table
+                    }
+                    else if (result.Reason == ResultReason.Canceled)
+                    {
+                        var cancellation = VoiceProfileEnrollmentCancellationDetails.FromResult(result);
+                        Console.WriteLine($"CANCELED {profile.Id}: ErrorCode={cancellation.ErrorCode} ErrorDetails={cancellation.ErrorDetails}");
+                        await client.DeleteProfileAsync(profile);
+                    }
+                }
+            }
+
         }
 
         public static async Task<bool> SpeakerVerify(SpeechConfig config, VoiceProfile profile)
@@ -78,7 +130,7 @@ namespace FRS_API.Controllers
             try
             {
 
-                var speakerRecognizer = new SpeakerRecognizer(config, AudioConfig.FromWavFileInput("F://Temp.wav"));
+                var speakerRecognizer = new SpeakerRecognizer(config, AudioConfig.FromWavFileInput("C://Temp.wav"));
                 var model = SpeakerVerificationModel.FromProfile(profile);
 
                 Console.WriteLine("Speak the passphrase to verify: \"My voice is my passport, please verify me.\"");
