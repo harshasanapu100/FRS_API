@@ -49,11 +49,14 @@ namespace FRS_API.Controllers
         public async Task<IActionResult> UploadImage()
         {
             int rand = new Random().Next(0, 9999);
-            var fs = new FileStream($"C:\\TempFace_{rand}.jpg", FileMode.OpenOrCreate);
+
+            string tempPath = Path.Combine(Path.GetTempPath(), $"TempFace_{rand}.jpg");
+
+            var fs = new FileStream(tempPath, FileMode.OpenOrCreate);
             await Request.Body.CopyToAsync(fs);
             fs.Close();
             
-            var response = await dbService.UploadBlobToContainer(containerName, $"{rand}_faceApiImage.jpg", $"C:\\TempFace_{rand}.jpg", blobConnectionString);
+            var response = await dbService.UploadBlobToContainer(containerName, $"{rand}_faceApiImage.jpg", tempPath, blobConnectionString);
             return new JsonResult(response);
         }
 
@@ -78,11 +81,12 @@ namespace FRS_API.Controllers
             var config = SpeechConfig.FromSubscription(subscriptionKey, region);
             int rand = new Random().Next(0, 9999);
             // Save file to C:\\
-            var fs = new FileStream($"C:\\TempWeb_Enroll_{rand}.wav",FileMode.OpenOrCreate);
+            string tempPath = Path.Combine(Path.GetTempPath(), $"TempWeb_Enroll_{rand}.wav");
+            var fs = new FileStream(tempPath, FileMode.OpenOrCreate);
             await Request.Body.CopyToAsync(fs).ConfigureAwait(false);
             fs.Close();
 
-            var voiceId = await VerificationEnroll(config,rand);
+            var voiceId = await VerificationEnroll(config,tempPath);
             return new JsonResult(voiceId);
         }
 
@@ -92,7 +96,8 @@ namespace FRS_API.Controllers
             // TO-DO Save Audio received to C://Temp.wav 
             // Save file to C:\\
             int rand = new Random().Next(0, 9999);
-            var fs = new FileStream($"C:\\TempWeb_{rand}.wav", FileMode.OpenOrCreate);
+            string tempPath = Path.Combine(Path.GetTempPath(), $"TempWeb_{rand}.wav");
+            var fs = new FileStream(tempPath, FileMode.OpenOrCreate);
             await Request.Body.CopyToAsync(fs).ConfigureAwait(false);
             fs.Close();
             var config = SpeechConfig.FromSubscription(subscriptionKey, region);
@@ -104,20 +109,20 @@ namespace FRS_API.Controllers
                  
                  var userProfile = all.Where(v => v.Id == voiceId).SingleOrDefault();
 
-                var success = await SpeakerVerify(config, all[0],rand);
+                var success = await SpeakerVerify(config, all[0],tempPath);
                 if (success)
                     return Ok();
             }
             return Unauthorized();
         }
 
-        public async Task<string> VerificationEnroll( SpeechConfig config, int randomId)
+        public async Task<string> VerificationEnroll( SpeechConfig config, string tempPath)
         {
             using (var client = new VoiceProfileClient(config))
             using (var profile = await client.CreateProfileAsync(VoiceProfileType.TextIndependentVerification, "en-us"))
             {
 
-                using (var audioInput = AudioConfig.FromWavFileInput($"C:\\TempWeb_Enroll_{randomId}.wav"))
+                using (var audioInput = AudioConfig.FromWavFileInput(tempPath))
                 {
                     Console.WriteLine($"Enrolling profile id {profile.Id}.");
 
@@ -147,11 +152,11 @@ namespace FRS_API.Controllers
 
         }
 
-        public static async Task<bool> SpeakerVerify(SpeechConfig config, VoiceProfile profile,int randomId)
+        public static async Task<bool> SpeakerVerify(SpeechConfig config, VoiceProfile profile,string tempPath)
         {
             try
             {
-                var speakerRecognizer = new SpeakerRecognizer(config, AudioConfig.FromWavFileInput($"C://TempWeb_{randomId}.wav"));
+                var speakerRecognizer = new SpeakerRecognizer(config, AudioConfig.FromWavFileInput(tempPath));
                 var model = SpeakerVerificationModel.FromProfile(profile);
 
                 Console.WriteLine("Speak the passphrase to verify: \"My voice is my passport, please verify me.\"");
