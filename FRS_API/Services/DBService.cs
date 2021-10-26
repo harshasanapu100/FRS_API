@@ -1,4 +1,5 @@
-﻿using FRS_API.Contracts;
+﻿using Azure.Storage.Blobs;
+using FRS_API.Contracts;
 using FRS_API.Models;
 using System;
 using System.Collections.Generic;
@@ -97,7 +98,7 @@ namespace FRS_API.Services
                 {
 
                     connection.Open();
-                    var reader = cmd.ExecuteReader();
+                    var reader = await cmd.ExecuteReaderAsync().ConfigureAwait(false);
                     while (reader.Read())
                     {
                         var user = new User { Id = reader.GetInt32(0), Name = reader.GetString(1), Contact = reader.GetString(2),
@@ -200,6 +201,25 @@ namespace FRS_API.Services
                     var reader = await cmd.ExecuteScalarAsync().ConfigureAwait(false);
                     return reader.ToString();
                 }
+            }
+        }
+
+        public async Task<string> UploadBlobToContainer(string containerName, string blobName, string uploadLocation, string storageConnectionString)
+        {
+            try
+            {
+                BlobServiceClient blobServiceClient = new BlobServiceClient(storageConnectionString);
+                BlobContainerClient blobContainerClient = blobServiceClient.GetBlobContainerClient(containerName);
+                BlobClient blobClientUpload = blobContainerClient.GetBlobClient(blobName);
+
+                var response = await blobClientUpload.UploadAsync(uploadLocation,overwrite:true);
+                return $"https://connecttechstorage.blob.core.windows.net/innovate/{blobName}";
+                
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.Message);
+                return "";
             }
         }
     }

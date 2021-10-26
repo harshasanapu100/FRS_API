@@ -25,5 +25,7 @@ namespace FRS_API.Contracts
         public Task<bool> IsUserAuthenticated(int userId, string personId);
 
         public Task<string> GetUserVoiceId(int userId);
+
+        public Task<string> UploadBlobToContainer(string containerName, string blobName, string uploadLocation, string storageConnectionString);
     }
 }

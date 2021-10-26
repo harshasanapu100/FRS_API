@@ -1,5 +1,6 @@
 ﻿using FRS_API.Contracts;
 using FRS_API.Models;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.CognitiveServices.Speech;
 using Microsoft.CognitiveServices.Speech.Audio;
@@ -19,6 +20,9 @@ namespace FRS_API.Controllers
         private IDBService dbService;
         string subscriptionKey = "b23d4db8df61461883a908492c8f238b";
         string region = "westus";
+        string blobKey = "";
+        string blobConnectionString = "DefaultEndpointsProtocol=https;AccountName=connecttechstorage;AccountKey=RkuHdqSRs9HECk+NN3mjXvBvRjFJ2dDpCT31+E/y6wweaS3u2ZcZOT4mInm8XfODC7FSSBDfb1PcPOCt6W4A2A==;EndpointSuffix=core.windows.net";
+        string containerName = "innovate";
         public UserController(IDBService _dbService)
         {
             dbService = _dbService;
@@ -39,6 +43,20 @@ namespace FRS_API.Controllers
         {
             var users = await dbService.GetAllUsersAsync().ConfigureAwait(false);
             return Ok(users);
+        }
+
+        [HttpPost("UploadImage")]
+        public async Task<IActionResult> UploadImage(int userId)
+        {
+            
+            if (Request.Form.Files.Count > 0)
+            {
+                var fs = new FileStream("C:\\TempFace.jpg", FileMode.OpenOrCreate);
+                await Request.Body.CopyToAsync(fs);
+                fs.Close();
+            }          
+            var response = await dbService.UploadBlobToContainer(containerName, $"{userId}_faceApiImage.jpg", "C:\\TempFace.jpg", blobConnectionString);
+            return Ok(response);
         }
 
         [HttpGet("Face")]
