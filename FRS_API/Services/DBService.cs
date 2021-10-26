@@ -20,7 +20,7 @@ namespace FRS_API.Services
         public async Task<User> AddUserAsync(User user)
         {
             var query = $"Insert into [User](Name, Contact,Gender,Balance,Password,AzurePersonId, AzureVoiceId) OUTPUT INSERTED.Id " +
-                $"values('{user.Name}','{user.Contact}','{user.Gender}',{user.Balance},'{user.Password}','{user.AzurePersonId},'{user.AzureVoiceId}');";
+                $"values('{user.Name}','{user.Contact}','{user.Gender}',{user.Balance},'{user.Password}','{user.AzurePersonId}','{user.AzureVoiceId}');";
             using (var connection = new SqlConnection(connectionString))
             {
                 int userId = 0;
@@ -49,7 +49,8 @@ namespace FRS_API.Services
                                 Gender = reader.GetString(3),
                                 Balance = reader.GetInt32(4),
                                 Password = reader.GetString(5),
-                                AzurePersonId = reader.GetString(6)
+                                AzurePersonId = reader.GetString(6),
+                                AzureVoiceId = reader.GetString(7)
                             };
                             return newUser;
                         }

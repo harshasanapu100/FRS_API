@@ -46,17 +46,15 @@ namespace FRS_API.Controllers
         }
 
         [HttpPost("UploadImage")]
-        public async Task<IActionResult> UploadImage(int userId)
+        public async Task<IActionResult> UploadImage()
         {
+            int rand = new Random().Next(0, 9999);
+            var fs = new FileStream($"C:\\TempFace_{rand}.jpg", FileMode.OpenOrCreate);
+            await Request.Body.CopyToAsync(fs);
+            fs.Close();
             
-            if (Request.Form.Files.Count > 0)
-            {
-                var fs = new FileStream("C:\\TempFace.jpg", FileMode.OpenOrCreate);
-                await Request.Body.CopyToAsync(fs);
-                fs.Close();
-            }          
-            var response = await dbService.UploadBlobToContainer(containerName, $"{userId}_faceApiImage.jpg", "C:\\TempFace.jpg", blobConnectionString);
-            return Ok(response);
+            var response = await dbService.UploadBlobToContainer(containerName, $"{rand}_faceApiImage.jpg", $"C:\\TempFace_{rand}.jpg", blobConnectionString);
+            return new JsonResult(response);
         }
 
         [HttpGet("Face")]
@@ -78,14 +76,14 @@ namespace FRS_API.Controllers
         {
             
             var config = SpeechConfig.FromSubscription(subscriptionKey, region);
-
+            int rand = new Random().Next(0, 9999);
             // Save file to C:\\
-            var fs = new FileStream("C:\\TempWeb_Enroll.wav",FileMode.OpenOrCreate);
+            var fs = new FileStream($"C:\\TempWeb_Enroll_{rand}.wav",FileMode.OpenOrCreate);
             await Request.Body.CopyToAsync(fs).ConfigureAwait(false);
             fs.Close();
 
-            var voiceId = await VerificationEnroll(config);
-            return Ok(voiceId);
+            var voiceId = await VerificationEnroll(config,rand);
+            return new JsonResult(voiceId);
         }
 
         [HttpPost("Voice")]
@@ -93,7 +91,8 @@ namespace FRS_API.Controllers
         {
             // TO-DO Save Audio received to C://Temp.wav 
             // Save file to C:\\
-            var fs = new FileStream("C:\\TempWeb.wav", FileMode.OpenOrCreate);
+            int rand = new Random().Next(0, 9999);
+            var fs = new FileStream($"C:\\TempWeb_{rand}.wav", FileMode.OpenOrCreate);
             await Request.Body.CopyToAsync(fs).ConfigureAwait(false);
             fs.Close();
             var config = SpeechConfig.FromSubscription(subscriptionKey, region);
@@ -105,20 +104,20 @@ namespace FRS_API.Controllers
                  
                  var userProfile = all.Where(v => v.Id == voiceId).SingleOrDefault();
 
-                var success = await SpeakerVerify(config, all[0]);
+                var success = await SpeakerVerify(config, all[0],rand);
                 if (success)
                     return Ok();
             }
             return Unauthorized();
         }
 
-        public async Task<string> VerificationEnroll( SpeechConfig config)
+        public async Task<string> VerificationEnroll( SpeechConfig config, int randomId)
         {
             using (var client = new VoiceProfileClient(config))
             using (var profile = await client.CreateProfileAsync(VoiceProfileType.TextIndependentVerification, "en-us"))
             {
 
-                using (var audioInput = AudioConfig.FromWavFileInput("C:\\TempWeb_Enroll.wav"))
+                using (var audioInput = AudioConfig.FromWavFileInput($"C:\\TempWeb_Enroll_{randomId}.wav"))
                 {
                     Console.WriteLine($"Enrolling profile id {profile.Id}.");
 
@@ -148,11 +147,11 @@ namespace FRS_API.Controllers
 
         }
 
-        public static async Task<bool> SpeakerVerify(SpeechConfig config, VoiceProfile profile)
+        public static async Task<bool> SpeakerVerify(SpeechConfig config, VoiceProfile profile,int randomId)
         {
             try
             {
-                var speakerRecognizer = new SpeakerRecognizer(config, AudioConfig.FromWavFileInput("C://Temp.wav"));
+                var speakerRecognizer = new SpeakerRecognizer(config, AudioConfig.FromWavFileInput($"C://TempWeb_{randomId}.wav"));
                 var model = SpeakerVerificationModel.FromProfile(profile);
 
                 Console.WriteLine("Speak the passphrase to verify: \"My voice is my passport, please verify me.\"");
