@@ -21,7 +21,7 @@ namespace FRS_API.Models
 
         public string AzurePersonId { get; set; }
 
-        
+        public string AzureVoiceId { get; set; }
 
     }
 

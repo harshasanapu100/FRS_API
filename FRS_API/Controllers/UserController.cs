@@ -17,6 +17,8 @@ namespace FRS_API.Controllers
     public class UserController : ControllerBase
     {
         private IDBService dbService;
+        string subscriptionKey = "b23d4db8df61461883a908492c8f238b";
+        string region = "westus";
         public UserController(IDBService _dbService)
         {
             dbService = _dbService;
@@ -54,35 +56,36 @@ namespace FRS_API.Controllers
         }
 
         [HttpPost("VoiceEnroll")]
-        public async Task<IActionResult> EnrollVoice(int userId)
+        public async Task<IActionResult> EnrollVoice()
         {
-            string subscriptionKey = "b23d4db8df61461883a908492c8f238b";
-            string region = "westus";
+            
             var config = SpeechConfig.FromSubscription(subscriptionKey, region);
 
             // Save file to C:\\
-            var fs = new FileStream("C:\\TempWeb.wav",FileMode.OpenOrCreate);
+            var fs = new FileStream("C:\\TempWeb_Enroll.wav",FileMode.OpenOrCreate);
             await Request.Body.CopyToAsync(fs).ConfigureAwait(false);
             fs.Close();
 
-            await VerificationEnroll("sarath", config);
-            return Ok();
+            var voiceId = await VerificationEnroll(config);
+            return Ok(voiceId);
         }
 
         [HttpPost("Voice")]
-        public async Task<IActionResult> AuthenticateVoice(string userId)
+        public async Task<IActionResult> AuthenticateVoice(int userId)
         {
             // TO-DO Save Audio received to C://Temp.wav 
-            string subscriptionKey = "b23d4db8df61461883a908492c8f238b";
-            string region = "westus";
+            // Save file to C:\\
+            var fs = new FileStream("C:\\TempWeb.wav", FileMode.OpenOrCreate);
+            await Request.Body.CopyToAsync(fs).ConfigureAwait(false);
+            fs.Close();
             var config = SpeechConfig.FromSubscription(subscriptionKey, region);
             using (var client = new VoiceProfileClient(config))
             {
                 var all = await client.GetAllProfilesAsync(VoiceProfileType.TextIndependentVerification);
                 //TO-DO  Get Voice Profile basd on USerId from the above list
-                //  var voiceId = await dbService.GetUserVoiceId(userId).ConfigureAwait(false);
+                 var voiceId = await dbService.GetUserVoiceId(userId).ConfigureAwait(false);
                  
-                 var userProfile = all.Where(v => v.Id == userId).SingleOrDefault();
+                 var userProfile = all.Where(v => v.Id == voiceId).SingleOrDefault();
 
                 var success = await SpeakerVerify(config, all[0]);
                 if (success)
@@ -91,13 +94,13 @@ namespace FRS_API.Controllers
             return Unauthorized();
         }
 
-        public async Task VerificationEnroll(string name, SpeechConfig config)
+        public async Task<string> VerificationEnroll( SpeechConfig config)
         {
             using (var client = new VoiceProfileClient(config))
             using (var profile = await client.CreateProfileAsync(VoiceProfileType.TextIndependentVerification, "en-us"))
             {
 
-                using (var audioInput = AudioConfig.FromWavFileInput("C:\\TempWeb.wav"))
+                using (var audioInput = AudioConfig.FromWavFileInput("C:\\TempWeb_Enroll.wav"))
                 {
                     Console.WriteLine($"Enrolling profile id {profile.Id}.");
 
@@ -113,6 +116,7 @@ namespace FRS_API.Controllers
                     {
                         Console.WriteLine("Enrolled with Id " + result.ProfileId);
                         // TO-DO Insert Data into Use table
+                        return result.ProfileId;
                     }
                     else if (result.Reason == ResultReason.Canceled)
                     {
@@ -120,6 +124,7 @@ namespace FRS_API.Controllers
                         Console.WriteLine($"CANCELED {profile.Id}: ErrorCode={cancellation.ErrorCode} ErrorDetails={cancellation.ErrorDetails}");
                         await client.DeleteProfileAsync(profile);
                     }
+                    return "";
                 }
             }
 
@@ -129,7 +134,6 @@ namespace FRS_API.Controllers
         {
             try
             {
-
                 var speakerRecognizer = new SpeakerRecognizer(config, AudioConfig.FromWavFileInput("C://Temp.wav"));
                 var model = SpeakerVerificationModel.FromProfile(profile);
 

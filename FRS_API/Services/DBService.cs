@@ -18,8 +18,8 @@ namespace FRS_API.Services
 
         public async Task<User> AddUserAsync(User user)
         {
-            var query = $"Insert into [User](Name, Contact,Gender,Balance,Password,AzurePersonId) OUTPUT INSERTED.Id " +
-                $"values('{user.Name}','{user.Contact}','{user.Gender}',{user.Balance},'{user.Password}','{user.AzurePersonId}');";
+            var query = $"Insert into [User](Name, Contact,Gender,Balance,Password,AzurePersonId, AzureVoiceId) OUTPUT INSERTED.Id " +
+                $"values('{user.Name}','{user.Contact}','{user.Gender}',{user.Balance},'{user.Password}','{user.AzurePersonId},'{user.AzureVoiceId}');";
             using (var connection = new SqlConnection(connectionString))
             {
                 int userId = 0;
@@ -101,7 +101,7 @@ namespace FRS_API.Services
                     while (reader.Read())
                     {
                         var user = new User { Id = reader.GetInt32(0), Name = reader.GetString(1), Contact = reader.GetString(2),
-                            Gender = reader.GetString(3), Balance = reader.GetInt32(4) , Password = reader.GetString(5), AzurePersonId = reader.GetString(6) };
+                            Gender = reader.GetString(3), Balance = reader.GetInt32(4) , Password = reader.GetString(5), AzurePersonId = reader.GetString(6), AzureVoiceId = reader.GetString(7) };
                         userList.Add(user);
                     }
                 }
@@ -191,7 +191,7 @@ namespace FRS_API.Services
         public async Task<string> GetUserVoiceId(int userId)
         {
             //TO-DO change query to get voice Id
-            var query = $"select AzurepersonId from [User] where Id ={userId};";
+            var query = $"select AzureVoiceId from [User] where Id ={userId};";
             using (var connection = new SqlConnection(connectionString))
             {
                 using (SqlCommand cmd = new SqlCommand(query, connection))
