@@ -90,7 +90,7 @@ namespace FRS_API.Controllers
             return new JsonResult(voiceId);
         }
 
-        [HttpPost("Voice")]
+        [HttpPost("Voice/{userId}")]
         public async Task<IActionResult> AuthenticateVoice(int userId)
         {
             // TO-DO Save Audio received to C://Temp.wav 
