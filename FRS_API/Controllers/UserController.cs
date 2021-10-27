@@ -66,11 +66,11 @@ namespace FRS_API.Controllers
             var authenticated = await dbService.IsUserAuthenticated(userId, azurePersonId).ConfigureAwait(false);
             if (authenticated)
             {
-                return Ok();
+                return Ok(true);
             }
             else
             {
-                return Unauthorized();
+                return Ok(false);
             }
         }
 
