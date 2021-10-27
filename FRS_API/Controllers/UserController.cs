@@ -109,11 +109,11 @@ namespace FRS_API.Controllers
                  
                  var userProfile = all.Where(v => v.Id == voiceId).SingleOrDefault();
 
-                var success = await SpeakerVerify(config, all[0],tempPath);
+                var success = await SpeakerVerify(config, userProfile,tempPath);
                 if (success)
-                    return Ok();
+                    return Ok(true);
             }
-            return Unauthorized();
+            return Ok(false);
         }
 
         public async Task<string> VerificationEnroll( SpeechConfig config, string tempPath)
